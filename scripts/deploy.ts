@@ -30,7 +30,9 @@ async function run() {
   await ssh.putDirectory(distLocalPath, distRemotePath, { recursive: true });
   console.log(green(`"dist" folder copied!`));
 
-  console.log(`Copying "package.json" and "package-lock.json" files...`);
+  console.log(
+    `Copying "package.json", "package-lock.json" and "ormconfig.json" files...`,
+  );
   await ssh.putFiles([
     {
       local: join(rootLocalPath, 'package.json'),
@@ -40,8 +42,16 @@ async function run() {
       local: join(rootLocalPath, 'package-lock.json'),
       remote: posix.join(releasePath, 'package-lock.json'),
     },
+    {
+      local: join(rootLocalPath, 'ormconfig-prod.json'),
+      remote: posix.join(releasePath, 'ormconfig.json'),
+    },
   ]);
-  console.log(green(`"package.json" and "package-lock.json" files copied!`));
+  console.log(
+    green(
+      `"package.json", "package-lock.json" and "ormconfig.json" files copied!`,
+    ),
+  );
 
   const nvmSh = posix.join(process.env.SSH_NVM_DIR, 'nvm.sh');
 
