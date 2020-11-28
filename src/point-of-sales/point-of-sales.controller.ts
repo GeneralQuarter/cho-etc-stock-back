@@ -1,35 +1,138 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
+  Put,
 } from '@nestjs/common';
 import { PointOfSalesService } from './point-of-sales.service';
-import { PointOfSalesEntity } from './point-of-sales.entity';
+import { PointOfSaleEntity } from './point-of-sale.entity';
 import { CreatePointOfSaleDto } from './create-point-of-sale.dto';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { PointOfSaleProductsService } from '../point-of-sale-products/point-of-sale-products.service';
+import { CreatePointOfSaleProductDto } from '../point-of-sale-products/create-point-of-sale-product.dto';
+import { PointOfSaleProductEntity } from '../point-of-sale-products/point-of-sale-product.entity';
 
+@ApiTags('point-of-sales')
 @Controller('point-of-sales')
 export class PointOfSalesController {
-  constructor(private pointOfSalesService: PointOfSalesService) {}
+  constructor(
+    private pointOfSalesService: PointOfSalesService,
+    private pointOfSaleProductsService: PointOfSaleProductsService,
+  ) {}
 
   @Get()
-  async getAll(): Promise<PointOfSalesEntity[]> {
+  @ApiOperation({ summary: 'Get a list of point of sales' })
+  @ApiOkResponse({
+    description: 'List of all the point of sales',
+    type: [PointOfSaleEntity],
+  })
+  async getAll(): Promise<PointOfSaleEntity[]> {
     return this.pointOfSalesService.findAll();
   }
 
-  @Get('id')
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a point of sale by id' })
+  @ApiOkResponse({
+    description: 'Requested point of sale',
+    type: PointOfSaleEntity,
+  })
   async getOne(
     @Param('id', new ParseIntPipe()) id: number,
-  ): Promise<PointOfSalesEntity> {
-    return this.pointOfSalesService.findOne(id);
+  ): Promise<PointOfSaleEntity> {
+    const pos = await this.pointOfSalesService.findOne(id);
+
+    if (!pos) {
+      throw new NotFoundException(`Could not find point of sale with id ${id}`);
+    }
+
+    return pos;
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update existing point of sale' })
+  @ApiOkResponse({
+    description: 'Updated point of sale',
+    type: PointOfSaleEntity,
+  })
+  async updateOne(
+    @Param('id', new ParseIntPipe()) id: number,
+    @Body() createPointOfSaleDto: CreatePointOfSaleDto,
+  ): Promise<PointOfSaleEntity> {
+    const pos = await this.pointOfSalesService.findOne(id);
+
+    if (!pos) {
+      throw new NotFoundException(`Could not find point of sale with id ${id}`);
+    }
+
+    pos.name = createPointOfSaleDto.name;
+
+    return this.pointOfSalesService.save(pos);
   }
 
   @Post()
-  createOne(
+  @ApiOperation({ summary: 'Create a point of sale' })
+  @ApiCreatedResponse({
+    description: 'Create point of sale',
+    type: [PointOfSaleEntity],
+  })
+  async createOne(
     @Body() createPointOfSaleDto: CreatePointOfSaleDto,
-  ): Promise<PointOfSalesEntity> {
+  ): Promise<PointOfSaleEntity> {
     return this.pointOfSalesService.create(createPointOfSaleDto.name);
+  }
+
+  @Get(':id/products')
+  async getProducts(
+    @Param('id', new ParseIntPipe()) id: number,
+  ): Promise<PointOfSaleProductEntity[]> {
+    const pos = await this.pointOfSalesService.findOne(id, {
+      relations: ['products'],
+    });
+
+    if (!pos) {
+      throw new NotFoundException(`Could not find point of sale with id ${id}`);
+    }
+
+    return pos.products;
+  }
+
+  @Post(':id/products')
+  async createProduct(
+    @Param('id', new ParseIntPipe()) id: number,
+    @Body() createPointOfSaleProductDto: CreatePointOfSaleProductDto,
+  ): Promise<PointOfSaleProductEntity> {
+    const pos = await this.pointOfSalesService.findOne(id);
+
+    if (!pos) {
+      throw new NotFoundException(`Could not find point of sale with id ${id}`);
+    }
+
+    let pointOfSaleProduct;
+
+    try {
+      pointOfSaleProduct = await this.pointOfSaleProductsService.create(
+        createPointOfSaleProductDto,
+        pos,
+      );
+    } catch (e) {
+      if (e.code === 'ER_DUP_ENTRY') {
+        throw new BadRequestException(
+          `Point of sale product with reference ${createPointOfSaleProductDto.reference} already exists for point of sale ${pos.name}`,
+        );
+      }
+      throw e;
+    }
+
+    return pointOfSaleProduct;
   }
 }
