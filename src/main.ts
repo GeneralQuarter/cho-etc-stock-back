@@ -9,6 +9,9 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   await swagger(app);
   await app.listen(3000);
+
+  // notify pm2 that app is started
+  process.send('ready');
 }
 
 bootstrap();
