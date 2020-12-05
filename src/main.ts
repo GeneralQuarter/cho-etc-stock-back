@@ -11,7 +11,9 @@ async function bootstrap() {
   await app.listen(3000);
 
   // notify pm2 that app is started
-  process.send('ready');
+  if (typeof process.send === 'function') {
+    process.send('ready');
+  }
 }
 
 bootstrap();

@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -19,8 +18,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PointOfSaleProductsService } from '../point-of-sale-products/point-of-sale-products.service';
-import { CreatePointOfSaleProductDto } from '../point-of-sale-products/create-point-of-sale-product.dto';
 import { PointOfSaleProductEntity } from '../point-of-sale-products/point-of-sale-product.entity';
+import { CreateProductImportDto } from './create-product-import.dto';
+import { ProductImport } from './product-import';
+import { PlaisirsFermiersApiService } from '../plaisirs-fermiers-api/plaisirs-fermiers-api.service';
 
 @ApiTags('point-of-sales')
 @Controller('point-of-sales')
@@ -28,6 +29,7 @@ export class PointOfSalesController {
   constructor(
     private pointOfSalesService: PointOfSalesService,
     private pointOfSaleProductsService: PointOfSaleProductsService,
+    private plaisirsFermiersApiService: PlaisirsFermiersApiService,
   ) {}
 
   @Get()
@@ -106,33 +108,26 @@ export class PointOfSalesController {
     return pos.products;
   }
 
-  @Post(':id/products')
-  async createProduct(
+  @Post(':id/product-imports')
+  async importProducts(
     @Param('id', new ParseIntPipe()) id: number,
-    @Body() createPointOfSaleProductDto: CreatePointOfSaleProductDto,
-  ): Promise<PointOfSaleProductEntity> {
+    @Body() createProductImportDto: CreateProductImportDto,
+  ): Promise<any> {
     const pos = await this.pointOfSalesService.findOne(id);
 
     if (!pos) {
       throw new NotFoundException(`Could not find point of sale with id ${id}`);
     }
 
-    let pointOfSaleProduct;
-
-    try {
-      pointOfSaleProduct = await this.pointOfSaleProductsService.create(
-        createPointOfSaleProductDto,
-        pos,
-      );
-    } catch (e) {
-      if (e.code === 'ER_DUP_ENTRY') {
-        throw new BadRequestException(
-          `Point of sale product with reference ${createPointOfSaleProductDto.reference} already exists for point of sale ${pos.name}`,
+    switch (createProductImportDto.type) {
+      case ProductImport.PlaisirsFermiers:
+        const pfProducts = await this.plaisirsFermiersApiService.fetchProducts();
+        return this.pointOfSaleProductsService.createMultiple(
+          pfProducts.map((p) => ({ reference: p.ref, designation: p.name })),
+          pos,
         );
-      }
-      throw e;
+      default:
+        return null;
     }
-
-    return pointOfSaleProduct;
   }
 }

@@ -21,9 +21,6 @@ export class PointOfSaleProductEntity {
   @Column()
   reference: string;
 
-  @Column({ nullable: true })
-  unitPreTaxPrice: number;
-
   @ManyToOne(() => PointOfSaleEntity, (pos) => pos.products)
   pointOfSale: PointOfSaleEntity;
 }

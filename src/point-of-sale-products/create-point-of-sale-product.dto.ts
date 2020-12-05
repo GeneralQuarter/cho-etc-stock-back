@@ -6,7 +6,4 @@ export class CreatePointOfSaleProductDto {
 
   @ApiPropertyOptional()
   designation: string;
-
-  @ApiPropertyOptional()
-  unitPreTaxPrice: number;
 }
