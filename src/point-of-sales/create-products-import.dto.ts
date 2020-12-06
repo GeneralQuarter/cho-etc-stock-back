@@ -1,7 +1,7 @@
 import { ProductImport } from './product-import';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateProductImportDto {
+export class CreateProductsImportDto {
   @ApiProperty({
     enum: ProductImport,
   })

@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PfProduct } from './pf-product';
 import { PfProductsPage } from './pf-products-page';
 import { parse } from 'node-html-parser';
+import { PfSale } from './pf-sale';
+import { eachDayOfInterval, fromUnixTime, getUnixTime } from 'date-fns';
 
 @Injectable()
 export class PlaisirsFermiersApiService {
@@ -46,6 +48,43 @@ export class PlaisirsFermiersApiService {
     return products;
   }
 
+  async fetchSalesForInterval(
+    startTimestamp: number,
+    endTimestamp: number,
+  ): Promise<PfSale[]> {
+    console.log(startTimestamp, endTimestamp);
+    const cookies = await this.login();
+    const days = eachDayOfInterval({
+      start: fromUnixTime(startTimestamp),
+      end: fromUnixTime(endTimestamp),
+    });
+    const sales: PfSale[] = [];
+    for (const day of days) {
+      sales.push(
+        ...(await this.fetchSalesForTimestamp(cookies, getUnixTime(day))),
+      );
+    }
+    return sales;
+  }
+
+  async fetchSalesForTimestamp(
+    cookies: string[],
+    timestamp: number,
+  ): Promise<PfSale[]> {
+    return this.httpService
+      .post<string>(
+        `${this.baseUrl}/modules/page_producteur/ajax/fou_ventes.php`,
+        `code=${this.code}&date=${timestamp}&type_ventes=cumul&type_v=`,
+        {
+          headers: {
+            Cookie: cookies.join('; '),
+          },
+        },
+      )
+      .toPromise()
+      .then((res) => this.parsePfSales(res.data));
+  }
+
   async fetchProductsPage(
     cookies: string[],
     page: number,
@@ -83,5 +122,28 @@ export class PlaisirsFermiersApiService {
     page.hasNext = root.querySelector('li.next') !== null;
 
     return page;
+  }
+
+  parsePfSales(data: string): PfSale[] {
+    const root = parse(data);
+    const tbody = root.querySelector('tbody');
+
+    if (!tbody) {
+      return [];
+    }
+
+    const sales: PfSale[] = [];
+
+    const trs = tbody.querySelectorAll('tr');
+    for (const tr of trs) {
+      const [dateNode, refNode, , qtyNode] = tr.querySelectorAll('td');
+      sales.push({
+        date: dateNode.rawText,
+        ref: refNode.rawText,
+        quantity: parseFloat(qtyNode.rawText),
+      });
+    }
+
+    return sales;
   }
 }

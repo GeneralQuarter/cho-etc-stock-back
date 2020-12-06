@@ -31,4 +31,18 @@ export class PointOfSaleProductsService {
       .orUpdate({ conflict_target: ['reference'], overwrite: ['designation'] })
       .execute();
   }
+
+  async getProductPerRef(
+    refs: string[],
+    pointOfSale: PointOfSaleEntity,
+  ): Promise<{ [ref: string]: PointOfSaleProductEntity }> {
+    const products = await this.pointOfSaleProductsRepo.find({
+      where: refs.map((r) => ({ reference: r, pointOfSale })),
+    });
+    const hash = {};
+    for (const product of products) {
+      hash[product.reference] = product;
+    }
+    return hash;
+  }
 }
