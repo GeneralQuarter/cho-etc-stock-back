@@ -20,12 +20,10 @@ import {
 import { PointOfSaleProductsService } from '../point-of-sale-products/point-of-sale-products.service';
 import { PointOfSaleProductEntity } from '../point-of-sale-products/point-of-sale-product.entity';
 import { CreateProductsImportDto } from './create-products-import.dto';
-import { ProductImport } from './product-import';
 import { PlaisirsFermiersApiService } from '../plaisirs-fermiers-api/plaisirs-fermiers-api.service';
 import { CreateSalesImportDto } from './create-sales-import.dto';
-import { SaleImport } from './sale-import';
 import { PointOfSaleSalesService } from '../point-of-sale-sales/point-of-sale-sales.service';
-import { parse } from 'date-fns';
+import { PointOfSalesImportsService } from './point-of-sales-imports.service';
 
 @ApiTags('point-of-sales')
 @Controller('point-of-sales')
@@ -35,6 +33,7 @@ export class PointOfSalesController {
     private pointOfSaleProductsService: PointOfSaleProductsService,
     private pointOfSaleSalesService: PointOfSaleSalesService,
     private plaisirsFermiersApiService: PlaisirsFermiersApiService,
+    private pointOfSalesImportsService: PointOfSalesImportsService,
   ) {}
 
   @Get()
@@ -124,16 +123,10 @@ export class PointOfSalesController {
       throw new NotFoundException(`Could not find point of sale with id ${id}`);
     }
 
-    switch (createProductImportDto.type) {
-      case ProductImport.PlaisirsFermiers:
-        const pfProducts = await this.plaisirsFermiersApiService.fetchProducts();
-        return this.pointOfSaleProductsService.createMultiple(
-          pfProducts.map((p) => ({ reference: p.ref, designation: p.name })),
-          pos,
-        );
-      default:
-        return null;
-    }
+    return this.pointOfSalesImportsService.importProducts(
+      pos,
+      createProductImportDto.type,
+    );
   }
 
   @Post(':id/sales-import')
@@ -147,26 +140,10 @@ export class PointOfSalesController {
       throw new NotFoundException(`Could not find point of sale with id ${id}`);
     }
 
-    switch (createSalesImportDto.type) {
-      case SaleImport.PlaisirsFermiers:
-        const sales = await this.plaisirsFermiersApiService.fetchSalesForInterval(
-          createSalesImportDto.data.startTimestamp,
-          createSalesImportDto.data.endTimestamp,
-        );
-        const posProductPerRef = await this.pointOfSaleProductsService.getProductPerRef(
-          sales.map((s) => s.ref),
-          pos,
-        );
-        return this.pointOfSaleSalesService.createMultiple(
-          sales.map((s) => ({
-            reference: s.ref,
-            quantity: s.quantity,
-            date: parse(s.date, 'd/M/yyyy', new Date()),
-          })),
-          posProductPerRef,
-        );
-      default:
-        return null;
-    }
+    return this.pointOfSalesImportsService.importSales(
+      pos,
+      createSalesImportDto.type,
+      createSalesImportDto.data,
+    );
   }
 }

@@ -1,5 +1,6 @@
 import { SaleImport } from './sale-import';
 import { ApiProperty } from '@nestjs/swagger';
+import { CreateSalesImportData } from './create-sales-import-data';
 
 export class CreateSalesImportDto {
   @ApiProperty({
@@ -8,8 +9,5 @@ export class CreateSalesImportDto {
   type: SaleImport;
 
   @ApiProperty()
-  data: {
-    startTimestamp: number;
-    endTimestamp: number;
-  };
+  data: CreateSalesImportData;
 }
