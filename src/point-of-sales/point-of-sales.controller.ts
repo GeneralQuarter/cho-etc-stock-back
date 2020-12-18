@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { PointOfSalesService } from './point-of-sales.service';
 import { PointOfSaleEntity } from './point-of-sale.entity';
@@ -24,6 +25,9 @@ import { PlaisirsFermiersApiService } from '../plaisirs-fermiers-api/plaisirs-fe
 import { CreateSalesImportDto } from './create-sales-import.dto';
 import { PointOfSaleSalesService } from '../point-of-sale-sales/point-of-sale-sales.service';
 import { PointOfSalesImportsService } from './point-of-sales-imports.service';
+import { Connection } from 'typeorm';
+import { PointOfSaleSaleEntity } from '../point-of-sale-sales/point-of-sale-sale.entity';
+import { GetProductSalesDto } from './get-product-sales.dto';
 
 @ApiTags('point-of-sales')
 @Controller('point-of-sales')
@@ -34,6 +38,7 @@ export class PointOfSalesController {
     private pointOfSaleSalesService: PointOfSaleSalesService,
     private plaisirsFermiersApiService: PlaisirsFermiersApiService,
     private pointOfSalesImportsService: PointOfSalesImportsService,
+    private connection: Connection,
   ) {}
 
   @Get()
@@ -110,6 +115,39 @@ export class PointOfSalesController {
     }
 
     return pos.products;
+  }
+
+  @Get(':id/product-cumulated-sales')
+  async getProductSales(
+    @Param('id', new ParseIntPipe()) id: number,
+    @Query() getProductSalesDto: GetProductSalesDto,
+  ): Promise<any> {
+    const { startDate, endDate } = getProductSalesDto;
+
+    let query = this.connection
+      .createQueryBuilder()
+      .select('posp.id', 'productId')
+      .addSelect('posp.reference', 'reference')
+      .addSelect('posp.designation', 'designation')
+      .addSelect('SUM(poss.quantity)', 'quantitySum')
+      .from(PointOfSaleEntity, 'pos')
+      .innerJoin(
+        PointOfSaleProductEntity,
+        'posp',
+        'posp.pointOfSaleId = pos.id',
+      )
+      .innerJoin(PointOfSaleSaleEntity, 'poss', 'poss.productId = posp.id')
+      .where('pos.id = :id', { id });
+
+    if (startDate) {
+      query = query.andWhere('poss.date > :startDate', { startDate });
+    }
+
+    if (endDate) {
+      query = query.andWhere('poss.date < :endDate', { endDate });
+    }
+
+    return query.groupBy('posp.id').getRawMany();
   }
 
   @Post(':id/products-import')
