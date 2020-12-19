@@ -126,7 +126,7 @@ export class PointOfSalesController {
 
     let query = this.connection
       .createQueryBuilder()
-      .select('posp.id', 'productId')
+      .select('posp.id', 'id')
       .addSelect('posp.reference', 'reference')
       .addSelect('posp.designation', 'designation')
       .addSelect('SUM(poss.quantity)', 'quantitySum')
