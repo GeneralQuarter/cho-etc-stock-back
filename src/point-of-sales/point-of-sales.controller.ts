@@ -140,11 +140,11 @@ export class PointOfSalesController {
       .where('pos.id = :id', { id });
 
     if (startDate) {
-      query = query.andWhere('poss.date > :startDate', { startDate });
+      query = query.andWhere('poss.date >= :startDate', { startDate });
     }
 
     if (endDate) {
-      query = query.andWhere('poss.date < :endDate', { endDate });
+      query = query.andWhere('poss.date <= :endDate', { endDate });
     }
 
     return query.groupBy('posp.id').getRawMany();

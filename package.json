@@ -1,6 +1,6 @@
 {
   "name": "choc-etc-stock-back",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Small tool to handle cho-etc stock (back end)",
   "author": "Quentin Gangler",
   "license": "MIT",
