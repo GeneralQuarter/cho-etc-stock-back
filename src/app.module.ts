@@ -4,7 +4,6 @@ import { PointOfSalesModule } from './point-of-sales/point-of-sales.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 
 @Module({
   imports: [
@@ -15,7 +14,7 @@ import { join } from 'path';
       useFactory: (configService: ConfigService) => {
         return [
           {
-            rootPath: join(__dirname, configService.get<string>('SERVE_PATH')),
+            rootPath: configService.get<string>('SERVE_PATH'),
           },
         ];
       },
